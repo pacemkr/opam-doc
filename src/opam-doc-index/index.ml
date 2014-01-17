@@ -2,9 +2,21 @@
    | Packed_module : package * imports
 *)
 
+open Yojson
+
 type t_value =
   | Direct_path of string * string
   | Packed_module of string * (string * Digest.t) list
+
+let crc_to_json (mod_name, md5) =
+  `List [`String mod_name; `String (Digest.to_hex md5)]
+
+let t_value_to_json = function
+  | Direct_path (p, m) ->
+      `Assoc [(p, `String m)]
+  | Packed_module (p, mlist) ->
+      let json_list = List.map crc_to_json mlist in
+      `Assoc [(p, `List json_list)]
 
 module CrcMap =
   Map.Make(struct
@@ -22,14 +34,26 @@ module LocalMap = Map.Make(
     let compare (s1, d1) (s2,d2) =
       let sc = compare s1 s2 in
       if sc = 0 then
-	compare d1 d2
+  compare d1 d2
       else sc
   end)
 
 type package_list = (string * Cow.Html.t option) list
 
+let package_list_to_json pl =
+  `List (List.map (fun (s, _) -> `String s) pl)
+
 type global = { map: t_value CrcMap.t
-	      ; package_list: package_list }
+        ; package_list: package_list }
+
+let global_to_json g =
+  let map_json = `List (
+    CrcMap.fold
+      (fun k d l -> (`List [(crc_to_json k); (t_value_to_json d)]) :: l)
+      g.map
+      []
+  ) in
+  `Assoc [("map", `List map_json); ("package_list", (package_list_to_json g.package_list))]
 
 type local = t_value LocalMap.t
 
@@ -44,68 +68,73 @@ let read_global_file path =
       global
     with
       | Sys_error _ -> {map= CrcMap.empty; package_list= []}
-	
+
 let update_global global filenames =
   let doFile acc fname =
     let cmio, cmto = Cmt_format.read fname in
     match cmio, cmto with
       (* looking up for a packed cmt *)
       | Some cmi, Some cmt ->
-	let module_name = cmi.Cmi_format.cmi_name in
-	let (name,crc) =
-	  match cmi.Cmi_format.cmi_crcs with
-	    | e::_ ->
-	      e
-	    | _ -> assert false
-	in
-	begin
-	  match cmt.Cmt_format.cmt_annots with
-	    (* If this is a packed module, we need a way to find the path to submodules *)
-	    | Cmt_format.Packed _ ->
-	      (* The references should be present in the table after the update *)
-	      CrcMap.add
-		(module_name, crc)
-		(* Filter the self-references *)
-		(Packed_module
-		   (Opam_doc_config.current_package (),
-		    (List.filter ((<>) (name,crc)) cmi.Cmi_format.cmi_crcs)))
-		acc
-	    | Cmt_format.Implementation _
-	    | Cmt_format.Interface _ ->
-	      CrcMap.add (module_name, crc)
-		(Direct_path (Opam_doc_config.current_package (), module_name))
-		acc
-	    | _ -> acc (* shouldn't happen but you never know :l *)
-	end
+  let module_name = cmi.Cmi_format.cmi_name in
+  let (name,crc) =
+    match cmi.Cmi_format.cmi_crcs with
+      | e::_ ->
+        e
+      | _ -> assert false
+  in
+  begin
+    match cmt.Cmt_format.cmt_annots with
+      (* If this is a packed module, we need a way to find the path to submodules *)
+      | Cmt_format.Packed _ ->
+        (* The references should be present in the table after the update *)
+        CrcMap.add
+    (module_name, crc)
+    (* Filter the self-references *)
+    (Packed_module
+       (Opam_doc_config.current_package (),
+        (List.filter ((<>) (name,crc)) cmi.Cmi_format.cmi_crcs)))
+    acc
+      | Cmt_format.Implementation _
+      | Cmt_format.Interface _ ->
+        CrcMap.add (module_name, crc)
+    (Direct_path (Opam_doc_config.current_package (), module_name))
+    acc
+      | _ -> acc (* shouldn't happen but you never know :l *)
+  end
       (** In case the cmi is not included in the cmt file *)
       | None, Some cmt ->
-	let module_name = cmt.Cmt_format.cmt_modname in
-	let (name, crc) = 
-	  List.find (fun (n,_) -> module_name = n) cmt.Cmt_format.cmt_imports in
-	begin
-	  match cmt.Cmt_format.cmt_annots with
-	    | Cmt_format.Packed _ ->
-	      (* The references should be present in the table after the update *)
-	      CrcMap.add
-		(module_name, crc)
-		(* Filter the self-references *)
-		(Packed_module
-		   (Opam_doc_config.current_package (),
-		    (List.filter ((<>) (name,crc)) cmt.Cmt_format.cmt_imports)))
-		acc
-	    | Cmt_format.Implementation _
-	    | Cmt_format.Interface _ ->
-	      CrcMap.add (module_name, crc)
-		(Direct_path (Opam_doc_config.current_package (), module_name))
-		acc
-	    | _ -> acc (* shouldn't happen but you never know :l *)
-	end
+  let module_name = cmt.Cmt_format.cmt_modname in
+  let (name, crc) =
+    List.find (fun (n,_) -> module_name = n) cmt.Cmt_format.cmt_imports in
+  begin
+    match cmt.Cmt_format.cmt_annots with
+      | Cmt_format.Packed _ ->
+        (* The references should be present in the table after the update *)
+        CrcMap.add
+    (module_name, crc)
+    (* Filter the self-references *)
+    (Packed_module
+       (Opam_doc_config.current_package (),
+        (List.filter ((<>) (name,crc)) cmt.Cmt_format.cmt_imports)))
+    acc
+      | Cmt_format.Implementation _
+      | Cmt_format.Interface _ ->
+        CrcMap.add (module_name, crc)
+    (Direct_path (Opam_doc_config.current_package (), module_name))
+    acc
+      | _ -> acc (* shouldn't happen but you never know :l *)
+  end
       | _ ->
-	Printf.eprintf "Index.update_global: %s -- Wrong cmt file handed\n%!" fname;
-	acc
+  Printf.eprintf "Index.update_global: %s -- Wrong cmt file handed\n%!" fname;
+  acc
   in
   let newmap = List.fold_left doFile global.map filenames in
   { global with map = newmap }
+
+(*let write_global_file global path =*)
+  (*let oc = open_out path in*)
+  (*output_value oc global;*)
+  (*close_out oc*)
 
 let write_global_file global path =
   let oc = open_out path in
@@ -117,11 +146,11 @@ let create_local global mds =
     try
       let value = CrcMap.find md global.map in
       match value with
-	| Packed_module (_,crcs) ->
-	  let acc = List.fold_left (doMod (Some name)) acc crcs in
-	  LocalMap.add (pack, name) value acc
-	| Direct_path _ ->
-	  LocalMap.add (pack, name) value acc
+  | Packed_module (_,crcs) ->
+    let acc = List.fold_left (doMod (Some name)) acc crcs in
+    LocalMap.add (pack, name) value acc
+  | Direct_path _ ->
+    LocalMap.add (pack, name) value acc
     with Not_found -> acc
   in
   List.fold_left (doMod None) LocalMap.empty mds
@@ -129,9 +158,9 @@ let create_local global mds =
 let local_lookup local elems =
   let rec loop pack = function
     | (m, Uris.Module) :: r -> begin
-	match LocalMap.find (pack, m) local with
-	| Direct_path (pkg, str) -> pkg, (str, Uris.Module) :: r
-	| Packed_module _ -> loop (Some m) r
+  match LocalMap.find (pack, m) local with
+  | Direct_path (pkg, str) -> pkg, (str, Uris.Module) :: r
+  | Packed_module _ -> loop (Some m) r
       end
     | _ -> raise Not_found
   in
@@ -162,8 +191,8 @@ let reset_internal_table () =
 
 let add_internal = Hashtbl.add internal_table
 
-let lookup_internal kind id elems = 
-  let path = 
-      (Hashtbl.find internal_table id) @ [id.Ident.name, kind] @ elems 
+let lookup_internal kind id elems =
+  let path =
+      (Hashtbl.find internal_table id) @ [id.Ident.name, kind] @ elems
   in
-    Uris.uri path    
+    Uris.uri path

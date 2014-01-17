@@ -12,7 +12,7 @@ all: opam-doc-index bin-doc
 	@
 
 opam-doc-index: src/opam-doc-index/*.mli src/opam-doc-index/*.ml
-	$(OCAMLBUILD) -j $(J) -use-ocamlfind src/opam-doc-index/driver.native
+	$(OCAMLBUILD) -j $(J) -use-ocamlfind -pkg yojson src/opam-doc-index/driver.native
 	mv driver.native opam-doc-index
 
 bin-doc: src/bin-doc/*.mli src/bin-doc/*.ml

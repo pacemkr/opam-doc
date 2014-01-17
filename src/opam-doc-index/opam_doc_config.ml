@@ -3,7 +3,7 @@
 open Arg
 
 (* Todo : find a proper place to put the file *)
-let _index_file_path = ref ((Sys.getcwd ())^"/opam-doc.idx")
+let _index_file_path = ref ((Sys.getcwd ())^"/opam-doc.json")
 let _default_index_name = ref "index.html"
 let _filter_pervasives = ref false
 let _clear_index = ref false
@@ -26,7 +26,7 @@ let summary () = !_summary
 let set_current_package p = _current_package := p
 let set_summary s = _summary := Some s
 
-let options  = 
+let options  =
   [ ("--package", Set_string _current_package, "Specify the package")
   ; ("-p", Set_string _current_package, "Specify the package")
   ; ("--package-description", Set_string _package_descr, "Add a description to the package")
@@ -85,7 +85,7 @@ let default_stylesheet_css =
   table.typetable tr td,
   table.typetable tfoot tr td {
     display: table-cell;
-  } 
+  }
 
   table.indextable { background: white; border: none; }
   table.indextable thead,
@@ -111,16 +111,16 @@ let default_stylesheet_css =
   table.indextable tr td,
   table.indextable tfoot tr td {
     display: table-cell;
-  } 
+  }
 
-  #opamdocroot .panel.callout { 
+  #opamdocroot .panel.callout {
     padding: 0.5rem;
     background: #fdfdfd;
     border: none;
   }
 
   p { line-height: 1.1rem; margin-bottom: 0.8rem; }
-  body { 
+  body {
     font-family: 'Source Sans Pro', sans-serif;
     color: black;
   }
@@ -307,7 +307,7 @@ let style_tag () =
 
 (* Config script *)
 
-let config_tag () = 
+let config_tag () =
   <:html<<script type="text/javascript">
 var ocaml_package = '$str:current_package ()$'
 var ocaml_base = '$str:base_uri ()$'
@@ -323,7 +323,7 @@ let script_tag () =
   <:html<<script type="text/javascript" src="$str:jquery_online_url$"> </script>
 <script type="text/javascript" src="$str:script_url ()$"> </script>&>>
 
-let default_script = 
+let default_script =
 "var opamdoc_contents = '#opamdocroot'
 
 // utility - Fetch HTML from URL using ajax
@@ -428,13 +428,13 @@ Path.prototype.name = function () {
             name = this.module;
             if(this.subnames.length > 0){
                 name += '.' + this.subnames.join('.');
-            } 
+            }
         }
-    }        
+    }
     return name;
 }
 
-Path.prototype.url = function () { 
+Path.prototype.url = function () {
     var url = null;
     if(this.package !== null) {
         url = ocaml_base + '/' + this.package;
@@ -446,9 +446,9 @@ Path.prototype.url = function () {
                 } else {
                     url += '.' + this.subnames[i];
                 }
-            } 
+            }
         }
-    }        
+    }
     return url;
 }
 
@@ -463,7 +463,7 @@ Copy.prototype = Path.prototype
 
 Path.prototype.copy = function () { return new Copy(this) }
 
-Path.prototype.extend = function (name, kind) { 
+Path.prototype.extend = function (name, kind) {
     this.subnames[this.subnames.length] = name;
     this.subkinds[this.subkinds.length] = kind;
 }
@@ -513,7 +513,7 @@ function Parent(path) {
                 this.subnames = path.subnames.slice(0, -1);
                 this.subkinds = path.subkinds.slice(0, -1);
             }
-        } 
+        }
     }
 }
 
@@ -601,11 +601,11 @@ Page.prototype.title = function(){
         } else {
           sep = ' : ';
         }
-        alias = $('<a>', 
+        alias = $('<a>',
                   {href    : this.alias.url(),
                    text    : this.alias.name()});
     }
-     
+
     return $('<h1>')
         .addClass('ocaml_title')
         .append(fullName + sep)
@@ -697,7 +697,7 @@ function load_page(page, pv, input, cont) {
                         var include_pv = new PathVisitor(include_path);
 
                         var include_url = ocaml_base + '/' + include_path.package + '/' + include_path.module +'.html'
-                        
+
                         ajax(include_url, function(data){
                             load_page(page, include_pv.concat(pv), data, cont);
                         });
@@ -744,7 +744,7 @@ function load_page(page, pv, input, cont) {
             if (typeof pathAttr === 'undefined'){
                 load_page(page, pv.next(), subdata, cont);
             } else {
-               
+
                 var alias_path = new Path(pathAttr);
                 var alias_pv = new PathVisitor(alias_path);
 
@@ -764,7 +764,7 @@ function load_path(path, cont) {
         ajax(url, function(data){
             var pg = new Page(path, 'module');
             var pv = new PathVisitor(path);
-            
+
             load_page(pg, pv, data, cont);
         });
     } else {
