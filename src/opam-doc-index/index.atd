@@ -1,0 +1,6 @@
+type digest_t <ocaml predef from="Digest"> = abstract
+
+type t_value = [
+  | Direct_path of (string * string)
+  | Packed_module of (string * digest_t list)
+] <ocaml repr="classic">
