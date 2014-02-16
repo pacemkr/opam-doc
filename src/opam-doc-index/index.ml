@@ -53,7 +53,7 @@ let global_to_json g =
       g.map
       []
   ) in
-  `Assoc [("map", `List map_json); ("package_list", (package_list_to_json g.package_list))]
+  `Assoc [("map", map_json); ("package_list", (package_list_to_json g.package_list))]
 
 type local = t_value LocalMap.t
 
@@ -139,7 +139,11 @@ let update_global global filenames =
 let write_global_file global path =
   let oc = open_out path in
   output_value oc global;
-  close_out oc
+  close_out oc;
+  let joc = open_out (path ^ ".json") in
+  let jsons = Yojson.to_string (global_to_json global) in
+  output_string joc jsons;
+  close_out joc
 
 let create_local global mds =
   let rec doMod pack acc ((name, _) as md)  =
