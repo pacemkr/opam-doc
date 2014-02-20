@@ -19,14 +19,14 @@ type type_kind =
 
 (* Type expressions for the class language *)
 
-and class_type = 
+and class_type =
     Dcty_constr
   | Dcty_signature of class_signature
   | Dcty_fun of class_type
 
 and class_signature = class_type_field list
 
-and class_type_field = 
+and class_type_field =
   { dctf_desc: class_type_field_desc;
     dctf_info: Info.t option;
     dctf_after_info: Info.t option; }
@@ -38,6 +38,7 @@ and class_type_field_desc =
   | Dctf_cstr
   | Dctf_comment
   | Dctf_stop
+  with sexp
 
 (* Value expressions for the class language *)
 
@@ -127,14 +128,15 @@ and structure_item_desc =
   | Dstr_comment
   | Dstr_stop
 
-and interface = 
+and interface =
   { dintf_items: signature_item list;
     dintf_info: Info.t option; }
 
-and implementation = 
+and implementation =
   { dimpl_items: structure_item list;
     dimpl_info: Info.t option; }
 
-and file = 
-  Dfile_intf of interface
-| Dfile_impl of implementation
+and file =
+    Dfile_intf of interface
+  | Dfile_impl of implementation
+  with sexp

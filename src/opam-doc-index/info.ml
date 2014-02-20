@@ -10,6 +10,8 @@
 (*                                                                     *)
 (***********************************************************************)
 
+open Sexplib.Std
+
 type style_kind =
   | SK_bold
   | SK_italic
@@ -20,6 +22,7 @@ type style_kind =
   | SK_superscript
   | SK_subscript
   | SK_custom of string
+  with sexp
 
 type ref_kind =
     RK_element
@@ -37,6 +40,7 @@ type ref_kind =
   | RK_const
   | RK_link
   | RK_custom of string
+  with sexp
 
 type special_ref_kind =
     SRK_module_list of string list
@@ -58,17 +62,22 @@ and text_element =
   | Target of string option * string
 
 and text = text_element list
+  with sexp
 
 type see_ref =
     See_url of string
   | See_file of string
   | See_doc of string
+  with sexp
 
 type see = see_ref * text
+  with sexp
 
 type param = (string * text)
+  with sexp
 
 type raised_exception = (string * text)
+  with sexp
 
 type t = {
     i_desc : text option;
@@ -83,6 +92,7 @@ type t = {
     i_return_value : text option ;
     i_custom : (string * text) list ;
   }
+  with sexp
 
 let dummy = {
   i_desc = None ;

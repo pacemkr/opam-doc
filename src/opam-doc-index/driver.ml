@@ -8,18 +8,18 @@ let create_package_directory () =
   if not Sys.(file_exists package_name && is_directory package_name) then
     Unix.mkdir package_name 0o755
 
-let moduleName f = 
+let moduleName f =
   String.capitalize (Filename.chop_extension (Filename.basename f))
 
-let pSameBase a = 
+let pSameBase a =
   let open Filename in
   let base = chop_extension (basename a) in
     (fun b -> (chop_extension (basename b)) = base)
 
-let filter_conflicts files = 
-  List.rev 
-    (List.fold_left 
-       (fun acc f -> 
+let filter_conflicts files =
+  List.rev
+    (List.fold_left
+       (fun acc f ->
          if List.exists (pSameBase f) acc then begin
            Printf.eprintf "Duplicate module name: \"%s\"\n" (moduleName f);
            acc
@@ -35,38 +35,38 @@ let process_cmd cmd =
     try
       let cmd = read_cmd cmd in Some cmd.cmd_doctree
     with
-	_ -> None
+  _ -> None
   )
 
-let copy_file input_name output_name = 
+let copy_file input_name output_name =
   let open Unix in
   let buffer_size = 8192 in
   let buffer = String.create buffer_size in
-  let fd_in = openfile input_name [O_RDONLY] 0 in 
-  let fd_out = openfile output_name [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in 
-  let rec copy_loop () = 
-    match read fd_in buffer 0 buffer_size with 
-    | 0 -> () 
-    | r -> ignore (write fd_out buffer 0 r); 
-           copy_loop () 
-  in 
-    copy_loop (); 
-    close fd_in; 
+  let fd_in = openfile input_name [O_RDONLY] 0 in
+  let fd_out = openfile output_name [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
+  let rec copy_loop () =
+    match read fd_in buffer 0 buffer_size with
+    | 0 -> ()
+    | r -> ignore (write fd_out buffer 0 r);
+           copy_loop ()
+  in
+    copy_loop ();
+    close fd_in;
     close fd_out
 
 let create_summary files =
-  let filename = 
+  let filename =
     Opam_doc_config.current_package () ^ "/summary.html"
   in
     match Opam_doc_config.summary () with
       None -> Html_utils.generate_package_summary filename files
-    | Some s -> 
+    | Some s ->
         if Sys.file_exists s then
           Unix.handle_unix_error (fun () -> copy_file s filename) ()
         else Printf.eprintf "Summary file %s does not exist\n" s
 
-let create_index () = 
-  let filename = 
+let create_index () =
+  let filename =
     Opam_doc_config.current_package () ^ "/index.html"
   in
     Html_utils.generate_package_index filename
@@ -80,13 +80,13 @@ let rec check_package_name_conflict global =
         | 'Y' | 'y' | '\n' -> ()
         | 'N' | 'n' -> Printf.printf "Conflict unresolved. Exiting now..."; exit 0
         | 'r' ->
-	    Printf.printf "New package name : ";
-	    Opam_doc_config.set_current_package (read_line ());
-	    check_package_name_conflict global
+      Printf.printf "New package name : ";
+      Opam_doc_config.set_current_package (read_line ());
+      check_package_name_conflict global
         | _ -> loop ())
     end
   in
-  if Index.package_exists global (Opam_doc_config.current_package ()) 
+  if Index.package_exists global (Opam_doc_config.current_package ())
      && not (Opam_doc_config.always_proceed ()) then loop ()
 
 let process_file global cmd cmt =
@@ -100,6 +100,13 @@ let process_file global cmd cmt =
       | Some cmi, Some cmt ->
         let imports = cmi.Cmi_format.cmi_crcs in
         let local = create_local global imports in
+        (match doctree with
+        | Some dt ->
+              let filename = Opam_doc_config.current_package () ^ "/" ^  module_name ^ ".json" in
+              let oc = open_out filename in
+              output_string oc (Sexplib.Sexp.to_string_hum (Doctree.sexp_of_file dt));
+              close_out oc
+        | None -> ());
         Index.reset_internal_table ();
           match cmt.Cmt_format.cmt_annots with
             | Cmt_format.Interface intf ->
@@ -108,8 +115,8 @@ let process_file global cmd cmt =
               Some (generate_file_from_structure local module_name doctree impl)
             | _ -> raise (Failure "Wrong kind of cmt file")
    with exn ->
-     Printf.eprintf "Error while processing module %s: \"%s\"\n" 
-	            module_name (Printexc.to_string exn);
+     Printf.eprintf "Error while processing module %s: \"%s\"\n"
+              module_name (Printexc.to_string exn);
      Printexc.print_backtrace stderr;
      None
 
@@ -123,7 +130,7 @@ let _ =
 
   (* read the saved global table *)
   let global = read_global_file (Opam_doc_config.index_file_path ()) in
-  
+
   check_package_name_conflict global;
 
   let global = add_global_package global
@@ -144,9 +151,9 @@ let _ =
     let exti = ext ^ "i" in
     let discard file =
       (Filename.check_suffix file ext)
-      && (List.exists (fun filei -> 
-                       (Filename.check_suffix filei exti) 
-                       && (pSameBase file filei)) 
+      && (List.exists (fun filei ->
+                       (Filename.check_suffix filei exti)
+                       && (pSameBase file filei))
                       files)
     in
       List.filter (fun file -> not (discard file)) files
@@ -164,9 +171,9 @@ let _ =
   let cmt_files = filter_conflicts cmt_files in
   let cmd_files = filter_conflicts cmd_files in
 
-  let processed_files = 
+  let processed_files =
     List.fold_left
-      (fun l cmd -> 
+      (fun l cmd ->
          match get_cmt cmd cmt_files with
          | Some cmt -> begin match process_file global cmd cmt with
            | Some o -> o :: l
@@ -185,11 +192,11 @@ let _ =
   if processed_files != [] then
     begin
       let open Html_utils in
-	  output_style_file ();
-	  output_script_file ();
+    output_style_file ();
+    output_script_file ();
           create_summary processed_files;
           create_index ();
-	  generate_global_packages_index global
+    generate_global_packages_index global
     end;
 
   (* write down the updated global table *)

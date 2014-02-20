@@ -23,6 +23,7 @@ type style_kind =
   | SK_superscript
   | SK_subscript
   | SK_custom of string
+  with sexp
 
 (** The differents kinds of element references. *)
 type ref_kind =
@@ -41,6 +42,8 @@ type ref_kind =
   | RK_const
   | RK_link
   | RK_custom of string
+  with sexp
+
 
 (* The different kinds of special reference *)
 type special_ref_kind =
@@ -62,26 +65,31 @@ and text_element =
   | Ref of ref_kind * string * text option
     (** A reference to an element. Complete name and kind. An optional
         text can be given to display this text instead of the element name.*)
-  | Special_ref of special_ref_kind (** Special kinds of reference *)     
+  | Special_ref of special_ref_kind (** Special kinds of reference *)
   | Target of string option * string (** (target, code) : to specify code for a specific target format *)
 
 (** [text] is a list of text_elements. The order matters. *)
 and text = text_element list
+  with sexp
 
 (** The different forms of references in \@see tags. *)
 type see_ref =
     See_url of string
   | See_file of string
   | See_doc of string
+  with sexp
 
 (** The information in a \@see tag. *)
 type see = see_ref * text
+  with sexp
 
 (** Parameter name and description. *)
 type param = (string * text)
+  with sexp
 
 (** Raised exception name and description. *)
 type raised_exception = (string * text)
+  with sexp
 
 (** Information in a special comment. *)
 type t = {
@@ -97,6 +105,7 @@ type t = {
     i_return_value : text option ; (** The description text of the return value. *)
     i_custom : (string * text) list ; (** A text associated to a custom @-tag. *)
   }
+  with sexp
 
 (** An empty doc_info structure. *)
 val dummy : t
